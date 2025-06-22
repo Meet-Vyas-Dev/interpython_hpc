@@ -14,9 +14,6 @@ keypoints:
 
 ## Intro
 
-<<<<<<< Updated upstream
-## Paragraph 1
-=======
 ## Learning Objectives
 
 By the end of this lesson, you will be able to:
@@ -655,7 +652,6 @@ Resource optimization in HPC involves understanding your workload characteristic
 - Avoid common pitfalls like over-requesting resources
 
 Efficient resource utilization not only improves your job performance but also ensures fair access to shared HPC resources for all users.
->>>>>>> Stashed changes
 
 
 {% include links.md %}
