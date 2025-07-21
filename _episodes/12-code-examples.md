@@ -97,7 +97,7 @@ OpenMP was first introduced in October 1997 as a collaborative effort between ha
 
 OpenMP is now maintained by the OpenMP Architecture Review Board, which includes organizations like Arm, AMD, IBM, Intel, Cray, HP, Fujitsu, Nvidia, NEC, Red Hat, Texas Instruments, and Oracle Corporation. OpenMP allows you to parallelize loops in C/C++ or Fortran using compiler directives.
 
-> ### Terminology
+> ## Terminology
 > #### Nested Parallelism
 > - Nested parallelism occurs when a parallel task itself spawns additional parallel tasks. For example, imagine a program where each thread is responsible for a different data block, and within each block, more threads are launched to handle sub-tasks. This is useful when dealing with hierarchical or recursive algorithms but must be managed carefully to avoid performance penalties due to thread overhead.
 > 
@@ -125,7 +125,7 @@ Since C programming is not a prerequisite for this workshop, let's break down th
 
 Before we look at the explanation of the C code, we will first look at the Python Equivalent of this code
 
-### Python Analogy for the Logic of the Code 
+### Python Equivalent of the Code Logic 
  ```python 
 def add_arrays(b, c):
      """
@@ -154,9 +154,7 @@ def add_arrays(b, c):
  # Print first few values to verify
  print(a[:10])
 ```
-Now let's look at a detailed explanation of the C code
-
-> ## Explanation of the code
+> ## Explanation of the C code
 >
 > - `#include <omp.h>`: Includes the OpenMP API header needed for all OpenMP functions and directives.
 > - `#pragma omp parallel for`: A **compiler directive** that tells the compiler to **parallelize the `for` loop** that follows.
@@ -171,7 +169,7 @@ Now let's look at a detailed explanation of the C code
 >
 > ### Output
 >
-> The output is stored in array `a`, which will contain the sum of corresponding elements from arrays `b` and `c`. The execution is faster than running the loop sequentially.
+> - The output is stored in array `a`, which will contain the sum of corresponding elements from arrays `b` and `c`. The execution is faster than running the loop sequentially.
 >
 > ### Real-World Analogy
 >
@@ -256,9 +254,9 @@ if rank == 0:
 > [0, 1, 4, 9]
 > ```
 >
-> Other ranks do not print anything.
+> - Other ranks do not print anything.
 >
-> This example illustrates **point-to-root communication** — useful when one process needs to collect and process results from all workers.
+> This example illustrates **point-to-root communication** which is useful when one process needs to collect and process results from all workers.
 {: .discussion}
 
 ## Slurm Script to execute the code 
@@ -328,8 +326,7 @@ CUDA allows developers to write C, C++, Fortran, and Python code that runs on th
 - These threads are organized hierarchically into:
   - Grids of Blocks
   - Blocks of Threads
-
-This hierarchical design allows fine-grained control over memory and computation. This can be visualised in the following form
+- This can be visualised in the following form
 
 ![CUDA heirarchy visulation lower level](../fig/cuda_blocks.png)
 ![CUDA Kernel Execution on GPU](../fig/cuda_kernel_execution.png)
