@@ -22,10 +22,10 @@ keypoints:
 
 Most users begin with simple serial code, which runs sequentially on one processor. However, for problems involving large data sets, high resolution simulations, or time-critical tasks, serial execution quickly becomes inefficient.
 
-Parallel programming allows us to split work across multiple CPUs or even GPUs. High-Performance Computing (HPC) relies on this concept to solve problems faster.
+Parallel programming allows us to split work across multiple CPUs or even GPUs. High-Performance Computing (HPC) relies on this concept to solve problems faster. We can visualise this by looking at an example of finding the period for light curves
 
 > ## Figure Suggestion: 
-> Plot showing execution time of serial vs parallel implementation for increasing problem sizes (e.g., matrix size or loop iterations).
+> ![Serial vs. Parallel Performance Comparison](../fig/serial_parallel_comparision.png)
 {: .callout}
 
 ## Serial Code Example (CPU)
@@ -98,6 +98,16 @@ OpenMP was first introduced in October 1997 as a collaborative effort between ha
 
 OpenMP is now maintained by the OpenMP Architecture Review Board, which includes organizations like Arm, AMD, IBM, Intel, Cray, HP, Fujitsu, Nvidia, NEC, Red Hat, Texas Instruments, and Oracle Corporation. OpenMP allows you to parallelize loops in C/C++ or Fortran using compiler directives.
 
+> ## Terminology
+> ### Nested Parallelism
+> - Nested parallelism occurs when a parallel task itself spawns additional parallel tasks. For example, imagine a program where each thread is responsible for a different data block, and within each block, more threads are launched to handle sub-tasks. This is useful when dealing with hierarchical or recursive algorithms but must be managed carefully to avoid performance penalties due to thread overhead.
+> 
+> ### Single Instruction, Multiple Data (SIMD) – Vectorization
+> - SIMD is a form of data-level parallelism where the same instruction operates on multiple data elements simultaneously. For instance, instead of adding two numbers at a time, SIMD allows processors to add pairs of numbers in parallel using wide registers (like 128-bit or 256-bit). Vectorized operations using NumPy or compiler intrinsics take advantage of this under the hood to speed up loops.
+> 
+> ### Offloading to GPUs
+> - Offloading refers to transferring compute-intensive tasks from the CPU to the GPU, which is optimized for parallel processing. This is particularly effective for operations that can be executed simultaneously on thousands of threads, like matrix multiplications in deep learning or simulations in scientific computing. Tools like CUDA, OpenCL, or libraries like CuPy and PyTorch help achieve this in Python.
+
 ### Example: Running a loop in parallel using OpenMP    
 ```c
 #include <omp.h>
@@ -130,6 +140,35 @@ Since C programming is not a prerequisite for this workshop, let's break down th
 >
 > The output is stored in array `a`, which will contain the sum of corresponding elements from arrays `b` and `c`. The execution is faster than running the loop sequentially.
 >
+> ### Python Analogy for the Logic of the Code 
+> ```python 
+> def add_arrays(b, c):
+>     """
+>     Takes two lists `b` and `c`, adds corresponding elements, 
+>     and returns the resulting list `a` where a[i] = b[i] + c[i].
+>     """
+>    # Make sure both lists are the same length
+>    assert len(b) == len(c), "Input arrays must be the same length"
+>
+>    # Create an output list of the same size
+>    a = [0.0 for _ in range(len(b))]
+>
+>    # Loop through and compute a[i] = b[i] + c[i]
+>    for i in range(len(b)):
+>        a[i] = b[i] + c[i]
+>
+>    return a
+>
+> # Example usage
+> N = 100000
+> b = [i * 0.1 for i in range(N)]
+> c = [i * 0.2 for i in range(N)]
+>
+> a = add_arrays(b, c)
+>
+> # Print first few values to verify
+> print(a[:10])
+```
 > ### Real-World Analogy
 >
 > Suppose you need to send 100 emails:
@@ -218,15 +257,35 @@ if rank == 0:
 > This example illustrates **point-to-root communication** — useful when one process needs to collect and process results from all workers.
 {: .discussion}
 
-> ## Note:
-> You won't be able to run this code in your current environment. This example requires a Slurm job submission script to launch MPI processes across nodes. Detailed instructions on how to configure Slurm scripts and request resources are provided in [Section 2: HPC Bura - Resource Optimization ](https://meet-vyas-dev.github.io/interpython_hpc/24-resource-optimization/index.html).
-{: .prereq}
-
-Typically one would run this file after having a slurm script with the required resources followed by this command
+## Slurm Script to execute the code 
 
 ```bash
-mpirun -n 4 python your_script.py
+#!/bin/bash
+#SBATCH --job-name=mpi_hpc_ws
+#SBATCH --output=mpi_%j.out
+#SBATCH --error=mpi_%j.err
+#SBATCH --partition=defaultq
+#SBATCH --nodes=2
+#SBATCH --ntasks=4
+#SBATCH --time=00:10:00
+#SBATCH --mem=16G
+
+# Load required modules
+module purge # Remove the list of pre loaded modules
+module load Python/3.9.1 
+module list # List the modules
+ 
+# Create a python virtual environment 
+python3 -m venv name_of_your_venv
+ 
+# Activate your Python environment
+source name_of_your_venv/bin/activate
+
+# Run the MPI job
+mpirun -np 4 python mpi_hpc_ws.py
 ```
+
+Make sure your virtual environment has `mpi4py` installed and that your system has access to the OpenMPI runtime via `mpirun`. Adjust the number of nodes and tasks depending on the cluster policies.
 
 > ## Exercise: 
 > Modify serial array summation using OpenMP (C) or `multiprocessing` (Python).
@@ -266,7 +325,14 @@ CUDA allows developers to write C, C++, Fortran, and Python code that runs on th
   - Grids of Blocks
   - Blocks of Threads
 
-This hierarchical design allows fine-grained control over memory and computation.
+This hierarchical design allows fine-grained control over memory and computation. This can be visualised in the following form
+
+![CUDA heirarchy visulation lower level](../fig/cuda_blocks.png)
+![CUDA Kernel Execution on GPU](../fig/cuda_blocks.png)
+
+> ## Figure Source:
+> - [CUDA Kernel Execution](https://developer.nvidia.com/blog/cuda-refresher-cuda-programming-model/)
+{: .checklist}
 
 ### Key Features
 
@@ -280,6 +346,13 @@ This hierarchical design allows fine-grained control over memory and computation
 - **Host code**: Runs on the CPU, manages memory, and launches kernels.
 - **Device code (kernel)**: Runs on the GPU.
 - **Memory management**: Host/device memory allocations and transfers.
+
+### To execute any CUDA program, there are three main steps:
+
+- Copy the input data from host memory to device memory, also known as host-to-device transfer.
+- Load the GPU program and execute, caching data on-chip for performance.
+- Copy the results from device memory to host memory, also called device-to-host transfer.
+
 
 ### Checking CUDA availability before running code
 
@@ -345,9 +418,38 @@ print("First 5 results:", c[:5])
 print("Time taken on GPU:", gpu_time, "seconds")
 ```
 
-> ## Note: 
-> This code also requires GPU access and Slurm job submission to be executed properly. You will revisit this exercise after completing [Section 2: HPC Bura - Resource Optimization ](https://meet-vyas-dev.github.io/interpython_hpc/24-resource-optimization/index.html), which introduces how to configure resources and submit jobs.
-{: .prereq}
+## Slurm Script to execute the code 
+
+The following script can be used to submit a GPU-accelerated Python job (`numba_cuda_test.py`) using Slurm:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=Numba_Cuda
+#SBATCH --output=Numba_Cuda_%j.out
+#SBATCH --error=Numba_Cuda_%j.err
+#SBATCH --partition=gpu
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --gpus-per-node=1
+#SBATCH --time=00:10:00
+
+# --------- Load Environment ---------
+module load Python/3.9.1
+module load cuda/11.2
+module list
+
+# --------- Check whether the GPU is available ---------
+from numba import cuda
+print("CUDA Available:", cuda.is_available())
+# Activate virtual environment
+source 'name_of_venv'/bin/activate # Here name_of_venv refers to the name of your virtual environment without the quotes
+
+# --------- Run the Python Script ---------
+ python numba_cuda_test.py
+```
+Make sure your virtual environment includes the `numba-cuda` python library to access the GPU. 
 
 > ## Exercise: 
 > Write a Numba or CuPy version of vector addition and compare speed with NumPy.
@@ -392,7 +494,7 @@ __global__ void add(int *a, int *b, int *c, int N) {
 | Performance  | Good for logic-heavy tasks| Excellent for large, data-parallel problems |
 
 > ## Exercise: 
-> Show which parts of the code execute on GPU vs CPU (host vs device). Read about concepts like memory copy and kernel launch.
+> Show which parts of the code execute on GPU vs CPU (host vs device). Read about concepts like memory copy and kernel launch from the [CUDA C++ Programming Guide Chapter 5](https://docs.nvidia.com/cuda/cuda-c-programming-guide/#programming-model).
 {: .challenge}
 
 > **Reference**: [NVIDIA CUDA Samples](https://github.com/NVIDIA/cuda-samples)
@@ -403,7 +505,7 @@ __global__ void add(int *a, int *b, int *c, int N) {
 {: .callout}
 
 ---
-
+<!-- 
 ## Code Profiling (Optional)
 
 To understand and improve performance, profiling tools are essential.
@@ -418,7 +520,7 @@ To understand and improve performance, profiling tools are essential.
 > **Optional Reference**: [NVIDIA Nsight Tools](https://developer.nvidia.com/nsight-systems)
 {: .checklist}
 
----
+--- -->
 
 ## Summary
 
