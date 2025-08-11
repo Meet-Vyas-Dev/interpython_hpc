@@ -5,7 +5,7 @@ teaching: 30
 exercises: 10
 questions:
 - "What is the difference between requesting for CPU and GPU resources using Slurm?"
-- "How can I optimize my slurm script to avail the best resources for my specific task?"
+- "How can I optimize my slurm script to use the best resources for my specific task?"
 objectives:
 - "Understand different types of computational workloads and their resource requirements"
 - "Write optimized Slurm job scripts for sequential, parallel, and GPU workloads"
@@ -65,6 +65,19 @@ watch -n 1 nvidia-smi
 ---
 ## Types of Jobs and Resources
 
+When you run work on an HPC cluster, your job’s **type** determines how it will be scheduled and what resources it will use. Broadly, jobs fall into three categories:  
+
+- **Serial jobs**  
+  These use a single CPU core (or sometimes a single thread) to run all calculations. They don’t require communication between multiple processes. They’re ideal for workloads like simple data analysis, single-threaded simulations, or testing code.  
+
+- **Parallel jobs**  
+  These use multiple CPU cores — sometimes across multiple nodes — to run tasks simultaneously. Parallel jobs often use MPI (Message Passing Interface) or OpenMP explained in the previous section to coordinate work. They’re suited for large-scale simulations or computations that can be split into many parts running at once.  
+
+- **GPU jobs**  
+  These use Graphics Processing Units to accelerate certain types of workloads, especially those involving heavy numerical computation like deep learning, image processing, or large matrix operations. GPU jobs often also use CPU cores for parts of the workflow.  
+
+Once you know your job type, you can select the correct **SLURM partition** (queue) and request the right resources:  
+
 | Job Type   | SLURM Partition | Key SLURM Options              | Example Use Case            |
 |------------|------------------|-------------------------------|-----------------------------|
 | Serial     | `serial`         | `--partition`, no MPI         | Single-thread tensor calc   |
@@ -73,9 +86,12 @@ watch -n 1 nvidia-smi
 
 
 ## Choosing the Right Node
-- **GPU Node**: For massively parallel computations on GPUs (e.g., CUDA, TensorFlow, PyTorch).
-- **SMP Node**: For jobs needing large shared memory (big matrices, in-memory data) or multi-threaded code (OpenMP, R, Python multiprocessing).
 - **Regular Node**: For MPI-based distributed jobs or simple CPU tasks.
+- **SMP Node** (*Symmetric Multiprocessing*): For jobs needing large shared memory (big matrices, in-memory data) or    multi-threaded code (OpenMP, R, Python multiprocessing).  
+  - In an SMP system, multiple CPUs (cores) share the same physical memory and can access it at the same speed. This architecture is ideal when tasks need frequent access to a common memory space without the communication overhead of distributed systems.
+- **GPU Node**: For massively parallel computations on GPUs (e.g., CUDA, TensorFlow, PyTorch).
+
+
 **Decision chart for Choosing Nodes:**
 ![Decision chart for choosing node types](../fig/Job_Decision_Node_Tree.png)
 
@@ -115,6 +131,15 @@ Generate a 2D array where each entry corresponds to the deflection angle for a s
 ## Sequential Job Optimization
 
 Sequential jobs run on a single CPU core and are suitable for tasks that cannot be parallelized.
+
+In an HPC environment, you might encounter sequential jobs when:  
+
+- Running **legacy scientific codes** that were never written for parallel execution.  
+- Doing **data preprocessing or postprocessing** steps that are inherently single-threaded.  
+- Running **debugging or testing** on a small portion of your code before scaling up to parallel execution.  
+- Executing **small utilities** like file format conversion, simple simulations, or statistical analyses that finish quickly and don’t need multiple cores.  
+
+Although these jobs only use one core, they can still benefit from HPC resources such as faster CPUs, high memory availability, and optimized software libraries.
 
 ### Sequential Job Script Explained
 
@@ -474,6 +499,19 @@ int main() {
     return 0;
 } -->
 <!-- ``` -->
+
+In this MPI example, two important MPI concepts determine how the work is divided:  
+
+- **`size`**: The total number of MPI processes running. This is set when you launch your program (e.g., `mpirun -n 4 python script.py` means `size = 4`).  
+- **`rank`**: The unique ID number of each process, ranging from `0` to `size - 1`. Rank `0` is often called the **root process** and is usually responsible for gathering results and performing any final output or coordination tasks.  
+
+In this script:  
+- The **mass grid** is split into equal chunks based on `size`.  
+- Each process computes the gravitational deflection angles for **its assigned chunk** of masses, identified by its `rank`.  
+- When all processes finish their local work, `MPI.Gather` collects the results into a single array on rank `0`.  
+- Rank `0` then saves the results to file and creates the final plot.  
+
+This division of labor ensures that each process works on a different part of the data, enabling **parallel computation** and faster execution compared to running on a single core.
 
 ### Parallel Job Script for the Example
 
@@ -1012,86 +1050,5 @@ Resource optimization in HPC involves understanding your workload characteristic
 Efficient resource utilization not only improves your job performance but also ensures fair access to shared HPC resources for all users.
 
 ---
-
-> ## Revisit Earlier Exercises
->
-> Now that you've learned how to submit jobs using Slurm and request computational resources effectively, revisit the following exercises from the earlier lesson:
->
-> - [Exercise: MPI using `mpi4py`](https://meet-vyas-dev.github.io/interpython_hpc/12-code-examples/index.html)
-> - [Exercise: GPU vector addition with `numba-cuda`](https://meet-vyas-dev.github.io/interpython_hpc/12-code-examples/index.html)
->
-> Try running them now on your cluster using the appropriate Slurm script and resource flags.
-{: .prereq}
-
-> ## Solution 1: Slurm Submission Script for Exercise MPI with `mpi4py`
->
-> The following script can be used to submit your MPI-based Python program (`mpi_hpc_ws.py`) on an HPC cluster using Slurm:
->
-> ```bash
-> #!/bin/bash
-> #SBATCH --job-name=mpi_hpc_ws
-> #SBATCH --output=mpi_%j.out
-> #SBATCH --error=mpi_%j.err
-> #SBATCH --partition=defaultq
-> #SBATCH --nodes=2
-> #SBATCH --ntasks=4
-> #SBATCH --time=00:10:00
-> #SBATCH --mem=16G
->
-> # Load required modules
-> module purge
-> module load Python/3.9.1
-> module list
->
-> 
-> Create a python virtual environment 
-> python3 -m venv name_of_your_venv
-> 
-> Activate your Python environment
-> source name_of_your_venv/bin/activate
->
-> # Run the MPI job
-> mpirun -np 4 python mpi_hpc_ws.py
-> ```
->
-> Make sure your virtual environment has `mpi4py` installed and that your system has access to the OpenMPI runtime via `mpirun`. Adjust the number of nodes and tasks depending on the cluster policies.
-{: .solution}
-
-> ## Solution 2: Slurm Submission Script for Exercise GPU with `numba-cuda`
->
-> The following script can be used to submit a GPU-accelerated Python job (`numba_cuda_test.py`) using Slurm:
->
-> ```bash
-> #!/bin/bash
-> #SBATCH --job-name=Numba_Cuda
-> #SBATCH --output=Numba_Cuda_%j.out
-> #SBATCH --error=Numba_Cuda_%j.err
-> #SBATCH --partition=gpu
-> #SBATCH --nodes=1
-> #SBATCH --ntasks-per-node=1
-> #SBATCH --cpus-per-task=4
-> #SBATCH --mem=16G
-> #SBATCH --gpus-per-node=1
-> #SBATCH --time=00:10:00
->
-> # --------- Load Environment ---------
-> module load Python/3.9.1
-> module load cuda/11.2
-> module list
->
-> # --------- Check whether the GPU is available ---------
-> from numba import cuda
-> print("CUDA Available:", cuda.is_available())
-> # Activate virtual environment
-> source 'name_of_venv'/bin/activate # Here name_of_venv refers to the name of your virtual environment without the quotes
->
-> # --------- Run the Python Script ---------
-> python numba_cuda_test.py
-> ```
->
-> Make sure your virtual environment includes the `numba-cuda` python library to access the GPU. 
->
-{: .solution}
-
 
 {% include links.md %}
