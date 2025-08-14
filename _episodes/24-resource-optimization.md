@@ -44,24 +44,6 @@ keypoints:
 - Machine learning, scientific simulations, image processing
 - Require appropriate GPU resources and memory
 
-<!-- ### Resource Profiling
-
-Before optimizing, you need to understand your program's resource usage:
-
-```bash
-# Monitor CPU and memory usage
-htop
-
-# Time a program and get resource statistics  
-/usr/bin/time -v ./your_program
-
-# Monitor GPU usage (if available)
-nvidia-smi
-
-# Watch GPU usage continuously
-watch -n 1 nvidia-smi
-``` -->
-
 ---
 ## Types of Jobs and Resources
 
@@ -95,7 +77,23 @@ Once you know your job type, you can select the correct **SLURM partition** (que
 **Decision chart for Choosing Nodes:**
 ![Decision chart for choosing node types](../fig/Job_Decision_Node_Tree.png)
 
+<!-- ### Resource Profiling
 
+Before optimizing, you need to understand your program's resource usage:
+
+```bash
+# Monitor CPU and memory usage
+htop
+
+# Time a program and get resource statistics  
+/usr/bin/time -v ./your_program
+
+# Monitor GPU usage (if available)
+nvidia-smi
+
+# Watch GPU usage continuously
+watch -n 1 nvidia-smi
+``` -->
 
 ---
 
